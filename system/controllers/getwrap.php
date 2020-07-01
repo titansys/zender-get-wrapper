@@ -7,8 +7,8 @@
 class Getwrap_Controller extends MVC_Controller
 {
 	public function index()
-	{
-		$this->header->allow();
+    {
+        $this->header->allow();
 
         $type = $this->sanitize->string($this->url->segment(3));
 
@@ -20,8 +20,8 @@ class Getwrap_Controller extends MVC_Controller
 
         set_system($this->cache->getAll());
 
-		switch($type):
-			case "send":
+        switch($type):
+            case "send":
                 $request = $this->sanitize->array($_GET);
                 $key = $this->sanitize->string($_GET["key"]);
 
@@ -41,22 +41,30 @@ class Getwrap_Controller extends MVC_Controller
 
                 $api = $keys[$key];
 
+                $this->cache->container("user.subscription.{$api["hash"]}");
+
+                if($this->cache->empty()):
+                    $this->cache->setArray($this->system->checkSubscriptionByUserID($api["uid"]) > 0 ? $this->system->getPackageByUserID($api["uid"]) : $this->system->getDefaultPackage());
+                endif;
+
+                set_subscription($this->cache->getAll());
+
                 if(!isset($request["phone"], $request["message"]))
                     response(400, "Invalid Request!");
 
                 try {
                     $number = $this->phone->parse($request["phone"]);
+
+                    if(!$number->isValidNumber())
+                        response(400, "Invalid mobile number!");
+
+                    if(!$number->getNumberType(Brick\PhoneNumber\PhoneNumberType::MOBILE))
+                        response(400, "Invalid mobile number!");
+
+                    $request["phone"] = $number->format(Brick\PhoneNumber\PhoneNumberFormat::E164);
                 } catch(Brick\PhoneNumber\PhoneNumberParseException $e) {
                     response(400, $e->getMessage());
                 }
-
-                if (!$number->isValidNumber())
-                    response(400, "Invalid mobile number!");
-
-                if(!$number->getNumberType(Brick\PhoneNumber\PhoneNumberType::MOBILE))
-                    response(400, "Invalid mobile number!");
-
-                $request["phone"] = $number->format(Brick\PhoneNumber\PhoneNumberFormat::E164);
 
                 if(isset($request["sim"])):
                     if(!$this->sanitize->isInt($request["sim"]))
@@ -83,6 +91,17 @@ class Getwrap_Controller extends MVC_Controller
                 endif;
 
                 $devices = $this->cache->getAll();
+
+                if($this->system->checkQuota($api["uid"]) < 1):
+                    $this->system->create("quota", [
+                        "uid" => $api["uid"],
+                        "sent" => 0,
+                        "received" => 0
+                    ]);
+                endif;
+
+                if(limitation(subscription_send, $this->system->countQuota($api["uid"])["sent"]))
+                    response(400, "Maximum allowed sending for today has been reached!");
 
                 if(!isset($request["device"])):
                     foreach($devices as $device):
@@ -139,6 +158,8 @@ class Getwrap_Controller extends MVC_Controller
                     $this->cache->container("messages.{$api["hash"]}");
                     $this->cache->clear();
 
+                    $this->system->increment($api["uid"], "sent");
+
                     response(200, "Message has been added to queue on {$devices[$device]["name"]}", [
                         "api" => (boolean) 1,
                         "sim" => $filtered["sim"],
@@ -151,22 +172,22 @@ class Getwrap_Controller extends MVC_Controller
                 else:
                     response(400, "Something went wrong!");
                 endif;
-		
-				break;
-			default:
+        
+                break;
+            default:
                 $vars = [
                     "site_url" => (system_protocol < 2 ? str_replace("//", "http://", site_url) : str_replace("//", "https://", site_url))
                 ];
                 
-				$this->smarty->display("_apidoc/layout.tpl", $vars);
-		endswitch;
-	}
+                $this->smarty->display("_apidoc/layout.tpl", $vars);
+        endswitch;
+    }
 
-	public function create()
-	{
-		$this->header->allow();
+    public function create()
+    {
+        $this->header->allow();
 
-		$request = $this->sanitize->array($_GET);
+        $request = $this->sanitize->array($_GET);
         $key = $this->sanitize->string($_GET["key"]);
         $type = $this->sanitize->string($this->url->segment(4));
 
@@ -186,7 +207,15 @@ class Getwrap_Controller extends MVC_Controller
 
         $api = $keys[$key];
 
-		switch($type):
+        $this->cache->container("user.subscription.{$api["hash"]}");
+
+        if($this->cache->empty()):
+            $this->cache->setArray($this->system->checkSubscriptionByUserID($api["uid"]) > 0 ? $this->system->getPackageByUserID($api["uid"]) : $this->system->getDefaultPackage());
+        endif;
+
+        set_subscription($this->cache->getAll());
+
+        switch($type):
             case "contact":
                 if(!in_array("create_{$type}", $api["permissions"]))
                     response(403, "Permission \"create_{$type}\" not granted!");
@@ -196,6 +225,9 @@ class Getwrap_Controller extends MVC_Controller
 
                 if(empty($request["name"]))
                     response(400, "Contact name cannot be empty!");
+
+                if(limitation(subscription_contact, $this->system->countContacts($api["uid"])))
+                    response(400, "Maximum allowed contacts has been reached!");
 
                 try {
                     $number = $this->phone->parse($request["phone"]);
@@ -274,8 +306,8 @@ class Getwrap_Controller extends MVC_Controller
                 endif;
 
                 break;
-			default:
-				response(400, "Invalid Request!");
-		endswitch;
-	}
+            default:
+                response(400, "Invalid Request!");
+        endswitch;
+    }
 }
