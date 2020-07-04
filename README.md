@@ -1,7 +1,7 @@
 # Zender API GET Wrapper
 
 ![Status](https://img.shields.io/badge/status-released-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-1.1-lightgrey?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.1.3-lightgrey?style=for-the-badge)
 
 # Usage Guide
 

@@ -1,12 +1,12 @@
 <?php
 /**
- * @controller API GET Wrapper
- * @desc Wrapper for GET method requests
+ * @controller API
+ * @desc Handles api related requests
  */
 
 class Getwrap_Controller extends MVC_Controller
 {
-	public function index()
+    public function index()
     {
         $this->header->allow();
 
@@ -23,7 +23,11 @@ class Getwrap_Controller extends MVC_Controller
         switch($type):
             case "send":
                 $request = $this->sanitize->array($_GET);
-                $key = $this->sanitize->string($_GET["key"]);
+                $key = $this->sanitize->string(isset(
+                    $_GET["key"]) ? 
+                    $_GET["key"] : 
+                    response(400, "Invalid Request!")
+                );
 
                 if(!$this->sanitize->length($key, 5))
                     response(400, "Invalid Request!");
@@ -188,8 +192,12 @@ class Getwrap_Controller extends MVC_Controller
         $this->header->allow();
 
         $request = $this->sanitize->array($_GET);
-        $key = $this->sanitize->string($_GET["key"]);
         $type = $this->sanitize->string($this->url->segment(4));
+        $key = $this->sanitize->string(isset(
+            $_GET["key"]) ? 
+            $_GET["key"] : 
+            response(400, "Invalid Request!")
+        );
 
         if(empty($key))
             response(400, "Invalid Request!");
