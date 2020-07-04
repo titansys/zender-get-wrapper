@@ -1,7 +1,7 @@
 <?php
 /**
- * @controller API
- * @desc Handles api related requests
+ * @controller GET Wrapper
+ * @desc Wrapper for sending API requests on pure GET only
  */
 
 class Getwrap_Controller extends MVC_Controller
