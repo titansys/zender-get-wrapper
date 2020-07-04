@@ -56,6 +56,8 @@ class Getwrap_Controller extends MVC_Controller
                 if(!isset($request["phone"], $request["message"]))
                     response(400, "Invalid Request!");
 
+                $request["phone"] = "+{$request["phone"]}";
+
                 try {
                     $number = $this->phone->parse($request["phone"]);
 
@@ -236,6 +238,8 @@ class Getwrap_Controller extends MVC_Controller
 
                 if(limitation(subscription_contact, $this->system->countContacts($api["uid"])))
                     response(400, "Maximum allowed contacts has been reached!");
+
+                $request["phone"] = "+{$request["phone"]}";
 
                 try {
                     $number = $this->phone->parse($request["phone"]);
